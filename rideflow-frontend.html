@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rova — Accra rides when you need them</title>
+  <style>
+    :root {
+      --ink: #182018;
+      --muted: #6d756e;
+      --line: #e3e8e3;
+      --paper: #f6f8f5;
+      --card: rgba(255, 255, 255, .92);
+      --white: #fff;
+      --green: #164c3a;
+      --green-2: #267457;
+      --lime: #c9f268;
+      --coral: #ff765f;
+      --shadow: 0 18px 48px rgba(33, 58, 43, .11);
+      --radius: 24px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #eaf0e9;
+      min-height: 100vh;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; border: 0; }
+    .shell { min-height: 100vh; display: grid; grid-template-columns: minmax(560px, 1.1fr) minmax(430px, .9fr); }
+    .map-side {
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(224,239,216,.95), rgba(246,248,238,.8)),
+        repeating-linear-gradient(36deg, transparent 0 34px, rgba(115,154,117,.11) 35px 37px);
+    }
+    .map-side::before, .map-side::after {
+      content: ""; position: absolute; pointer-events: none; border-radius: 50%;
+      border: 1px solid rgba(40, 108, 80, .12);
+    }
+    .map-side::before { width: 620px; height: 620px; left: -170px; top: 170px; }
+    .map-side::after { width: 900px; height: 900px; right: -450px; top: -240px; }
+    .topbar { position: relative; z-index: 2; padding: 28px 34px; display: flex; justify-content: space-between; align-items: center; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.04em; font-size: 22px; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 12px 12px 12px 4px; background: var(--green); color: var(--lime); display: grid; place-items: center; font-size: 18px; transform: rotate(-8deg); }
+    .safe-pill { background: rgba(255,255,255,.68); border: 1px solid rgba(255,255,255,.9); padding: 10px 14px; border-radius: 99px; color: var(--green); font-size: 12px; font-weight: 700; display:flex; gap:8px; align-items:center; }
+    .safe-dot { width: 7px; height: 7px; border-radius: 50%; background: #51ad6d; box-shadow: 0 0 0 4px rgba(81,173,109,.15); }
+    .map-copy { position: absolute; left: 10%; top: 28%; max-width: 340px; z-index: 1; }
+    .eyebrow { color: var(--green-2); text-transform: uppercase; font-size: 11px; letter-spacing: .14em; font-weight: 800; }
+    .map-copy h1 { font-size: clamp(40px, 5vw, 72px); line-height: .93; letter-spacing: -.075em; margin: 14px 0 18px; max-width: 460px; }
+    .map-copy p { color: #5a675c; line-height: 1.55; margin: 0; max-width: 290px; }
+    .road { position: absolute; height: 12px; border-radius: 99px; background: rgba(255,255,255,.86); box-shadow: 0 0 0 2px rgba(159, 185, 150, .22); transform-origin: left; }
+    .road.r1 { width: 76%; top: 52%; left: 4%; transform: rotate(19deg); }
+    .road.r2 { width: 62%; top: 74%; left: 10%; transform: rotate(-31deg); }
+    .road.r3 { width: 58%; top: 36%; left: 38%; transform: rotate(78deg); }
+    .road.r4 { width: 48%; top: 88%; left: 46%; transform: rotate(-14deg); }
+    .road.r5 { width: 52%; top: 26%; left: 58%; transform: rotate(26deg); }
+    .park { position: absolute; border-radius: 48% 52% 45% 55%; background: rgba(184, 224, 160, .37); }
+    .park.p1 { width: 240px; height: 130px; left: 34%; top: 61%; transform: rotate(-23deg); }
+    .park.p2 { width: 180px; height: 110px; right: 3%; top: 68%; transform: rotate(19deg); }
+    .route { position: absolute; z-index: 2; left: 26%; top: 49%; width: 300px; height: 210px; border-left: 3px dashed var(--coral); border-bottom: 3px dashed var(--coral); border-radius: 0 0 0 100%; transform: rotate(-17deg); }
+    .route::after { content:""; position: absolute; width: 15px; height: 15px; right: -5px; top: -9px; background: var(--coral); border: 4px solid rgba(255,255,255,.9); border-radius:50%; }
+    .map-pin { position: absolute; z-index: 3; width: 42px; height: 42px; border-radius: 50% 50% 50% 5px; background: var(--green); transform: rotate(-45deg); display:grid; place-items:center; box-shadow: 0 8px 20px rgba(22,76,58,.24); }
+    .map-pin::after { content:""; width: 12px; height:12px; background: var(--lime); border-radius:50%; }
+    .pin-one { left: 20%; top: 43%; }
+    .pin-two { right: 23%; top: 53%; transform: rotate(-45deg) scale(.75); background: var(--coral); }
+    .map-footer { position: absolute; bottom: 30px; left: 34px; right: 34px; display:flex; justify-content:space-between; color:#718073; font-size:12px; z-index: 3; }
+    .map-footer span { display:flex; gap:8px; align-items:center; }
+
+    .app-side { background: var(--paper); padding: 24px 28px 22px; display:flex; flex-direction:column; min-height:100vh; }
+    .app-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; }
+    .greeting small { color: var(--muted); font-size: 12px; }
+    .greeting strong { display:block; font-size: 22px; margin-top: 3px; letter-spacing:-.04em; }
+    .avatar { width: 42px; height:42px; border-radius: 15px; background: #dfb093; color:#784e3e; display:grid; place-items:center; font-weight:800; }
+    .panel { background: var(--card); border:1px solid rgba(220,227,220,.85); box-shadow: var(--shadow); border-radius: var(--radius); padding: 20px; }
+    .ride-card { background: var(--green); color: white; padding: 22px; border-radius: var(--radius); position:relative; overflow:hidden; }
+    .ride-card::after { content:""; position:absolute; width:190px; height:190px; border-radius:50%; border:1px solid rgba(201,242,104,.22); right:-74px; top:-76px; }
+    .ride-card h2 { font-size: 24px; letter-spacing:-.055em; margin:0 0 7px; position:relative; z-index:1; }
+    .ride-card p { color: rgba(255,255,255,.67); font-size:13px; margin:0 0 18px; line-height:1.45; max-width: 245px; position:relative; z-index:1; }
+    .primary { background: var(--lime); color: var(--green); border-radius: 14px; padding: 13px 16px; font-weight:800; font-size:13px; transition: transform .2s, box-shadow .2s; }
+    .primary:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(201,242,104,.22); }
+    .section-head { display:flex; justify-content:space-between; align-items:center; margin: 25px 2px 11px; }
+    .section-head h3 { margin:0; font-size:14px; letter-spacing:-.02em; }
+    .link-button { color: var(--green-2); background:none; font-size:12px; font-weight:800; }
+    .saved-list { display:grid; gap:9px; }
+    .saved { display:flex; align-items:center; gap:12px; padding: 12px 13px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+    .saved-icon { width:32px; height:32px; display:grid; place-items:center; border-radius:11px; background:#eef5ea; color:var(--green-2); font-size:14px; }
+    .saved b { font-size:12px; display:block; }
+    .saved span { color:var(--muted); font-size:11px; display:block; margin-top:2px; }
+    .saved .arrow { margin-left:auto; color:#a9b3aa; }
+    .activity { display:flex; gap:12px; padding: 13px 0; border-bottom:1px solid var(--line); }
+    .activity:last-child { border-bottom:0; padding-bottom:0; }
+    .activity-icon { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; background:#f0ebe1; color:#8a6a42; }
+    .activity-main { flex:1; min-width:0; }
+    .activity-main b { display:block; font-size:12px; }
+    .activity-main span { display:block; color:var(--muted); font-size:11px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .activity-price { font-size:12px; font-weight:800; }
+    .bottom-nav { display:flex; justify-content:space-around; border-top:1px solid var(--line); padding: 17px 0 0; margin-top:auto; }
+    .nav-item { background:none; color:#9ba49b; font-size:10px; display:flex; flex-direction:column; align-items:center; gap:5px; font-weight:700; }
+    .nav-item.active { color:var(--green); }
+    .nav-icon { font-size:18px; line-height:1; }
+
+    .modal-backdrop { position:fixed; inset:0; background:rgba(18,38,28,.42); display:none; align-items:flex-end; justify-content:center; padding:20px; z-index:10; backdrop-filter: blur(5px); }
+    .modal-backdrop.open { display:flex; }
+    .modal { background:var(--paper); border-radius:28px; width:min(520px, 100%); padding:24px; box-shadow:0 22px 80px rgba(0,0,0,.2); animation: up .25s ease-out; }
+    @keyframes up { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+    .modal-top { display:flex; justify-content:space-between; align-items:start; }
+    .modal h2 { margin:0; font-size:25px; letter-spacing:-.06em; }
+    .modal p { margin:7px 0 20px; color:var(--muted); font-size:13px; line-height:1.5; }
+    .close { background:#e8eee8; color:var(--green); border-radius:50%; width:31px; height:31px; font-size:18px; }
+    .choice-row { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:18px; }
+    .choice { text-align:left; padding:14px; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:14px; }
+    .choice.selected { border:2px solid var(--green); padding:13px; background:#eff8dc; }
+    .choice b { font-size:12px; display:block; }
+    .choice span { color:var(--muted); font-size:10px; display:block; margin-top:4px; }
+    .field { display:flex; gap:10px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:14px; padding: 0 13px; margin-bottom:10px; }
+    .field span { color:var(--green-2); font-size:15px; }
+    .field input { width:100%; border:0; outline:0; padding:14px 0; color:var(--ink); background:transparent; font-size:13px; }
+    .modal .primary { width:100%; margin-top:5px; }
+    .driver-list { display:grid; gap:10px; margin-top:14px; }
+    .driver-card { display:flex; align-items:center; gap:11px; background:#fff; border:1px solid var(--line); border-radius:16px; padding:12px; }
+    .driver-avatar { width:40px; height:40px; border-radius:13px; display:grid; place-items:center; background:#dbeede; color:var(--green); font-weight:800; flex:0 0 auto; }
+    .driver-details { min-width:0; flex:1; }
+    .driver-details b { font-size:12px; display:block; }
+    .driver-details span { color:var(--muted); display:block; font-size:10px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .driver-status { color:var(--green-2) !important; font-weight:800; }
+    .driver-card .request-small { background:var(--green); color:white; border-radius:10px; padding:9px 10px; font-size:10px; font-weight:800; }
+    .matching-note { display:flex; gap:8px; align-items:flex-start; padding:11px 12px; border-radius:13px; background:#eef6e5; color:#50705b; font-size:11px; line-height:1.4; margin-top:14px; }
+    .matching-note b { color:var(--green); }
+    .trip-map { height:180px; margin:2px 0 17px; border-radius:19px; overflow:hidden; position:relative; background:linear-gradient(135deg, #e5f0de, #f5f2df); }
+    .trip-map::before { content:""; position:absolute; inset:12px -20px; transform:rotate(18deg); background:repeating-linear-gradient(0deg, transparent 0 30px, rgba(255,255,255,.9) 31px 35px); opacity:.82; }
+    .trip-map::after { content:""; position:absolute; width:130%; height:3px; left:-15%; top:55%; background:var(--coral); transform:rotate(-25deg); box-shadow:0 0 0 5px rgba(255,118,95,.1); }
+    .trip-pin { position:absolute; z-index:2; width:25px; height:25px; border-radius:50% 50% 50% 5px; transform:rotate(-45deg); display:grid; place-items:center; box-shadow:0 5px 12px rgba(22,76,58,.22); }
+    .trip-pin::after { content:""; width:7px; height:7px; border-radius:50%; background:white; }
+    .trip-pin.pickup { left:24%; top:62%; background:var(--green); }
+    .trip-pin.driver { right:21%; top:27%; background:var(--coral); }
+    .trip-map-label { position:absolute; z-index:3; background:rgba(255,255,255,.86); border:1px solid rgba(255,255,255,.8); border-radius:9px; padding:6px 8px; font-size:9px; font-weight:800; color:var(--green); box-shadow:0 4px 12px rgba(33,58,43,.08); }
+    .trip-map-label.driver-label { right:8%; top:9%; }
+    .trip-map-label.pickup-label { left:9%; bottom:10%; }
+    .status-pill { display:inline-flex; align-items:center; gap:7px; color:var(--green-2); background:#eaf5dc; border-radius:99px; padding:7px 10px; font-size:10px; font-weight:800; margin-bottom:11px; }
+    .status-pulse { width:7px; height:7px; border-radius:50%; background:#52ad6b; box-shadow:0 0 0 4px rgba(82,173,107,.14); }
+    .trip-summary { display:flex; align-items:center; gap:11px; padding:12px 0 14px; border-bottom:1px solid var(--line); }
+    .trip-summary .driver-avatar { width:43px; height:43px; }
+    .trip-summary b { font-size:13px; display:block; }
+    .trip-summary span { color:var(--muted); font-size:11px; display:block; margin-top:3px; }
+    .trip-eta { margin-left:auto; text-align:right; }
+    .trip-eta b { font-size:18px; letter-spacing:-.05em; }
+    .trip-eta span { font-size:10px; }
+    .trip-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:14px; }
+    .secondary { background:#e8eee8; color:var(--green); border-radius:12px; padding:12px; font-size:12px; font-weight:800; }
+    .danger-link { display:block; margin:13px auto 0; background:none; color:#b85f50; font-size:11px; font-weight:800; }
+    .fee-notice { display:flex; gap:8px; align-items:flex-start; padding:11px 12px; border-radius:13px; background:#fff4e7; color:#936338; font-size:11px; line-height:1.4; margin:12px 0 0; }
+    .fee-notice b { color:#754a22; }
+    .cancel-window { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:13px; background:#edf7e3; color:#52735a; font-size:11px; line-height:1.4; margin:12px 0 0; }
+    .cancel-window b { color:var(--green); }
+    .cancel-window.expired { background:#fff4e7; color:#936338; }
+    .cancel-window.expired b { color:#754a22; }
+    .waiting-panel { display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid var(--line); border-radius:13px; margin-top:10px; background:#fff; }
+    .waiting-panel > div { min-width:0; flex:1; }
+    .waiting-panel b { display:block; font-size:11px; }
+    .waiting-panel span { display:block; color:var(--muted); font-size:10px; margin-top:3px; }
+    .waiting-panel button { background:#e8eee8; color:var(--green); border-radius:10px; padding:9px 10px; font-size:10px; font-weight:800; white-space:nowrap; }
+    .waiting-panel.active { background:#fff8ee; border-color:#f0ddc2; }
+    .waiting-panel.active span { color:#936338; }
+    .cancel-copy { background:#fff4e7; color:#754a22; padding:12px; border-radius:13px; font-size:12px; line-height:1.5; margin:4px 0 16px; }
+    .cancel-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .cancel-actions .danger { background:#b85f50; color:#fff; border-radius:12px; padding:12px; font-size:12px; font-weight:800; }
+    .bill-lines { display:grid; gap:12px; padding:4px 0 14px; border-bottom:1px solid var(--line); }
+    .bill-line { display:flex; justify-content:space-between; gap:12px; font-size:12px; }
+    .bill-line span { color:var(--muted); }
+    .bill-line b { font-weight:800; }
+    .bill-line.fee span, .bill-line.fee b { color:#a16032; }
+    .bill-line.platform span, .bill-line.platform b { color:#8a6d62; }
+    .bill-total { display:flex; justify-content:space-between; padding-top:14px; font-size:15px; }
+    .bill-total b { font-size:21px; letter-spacing:-.05em; }
+    .bill-tabs { display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:4px; border-radius:13px; background:#e8eee8; margin:2px 0 17px; }
+    .bill-tab { background:transparent; color:var(--muted); border-radius:10px; padding:10px; font-size:11px; font-weight:800; }
+    .bill-tab.active { background:#fff; color:var(--green); box-shadow:0 2px 8px rgba(33,58,43,.08); }
+    .bill-caption { color:var(--muted); font-size:11px; line-height:1.45; margin:-7px 0 16px; }
+    .demo-strip { display:flex; align-items:center; gap:11px; padding:11px 12px; border:1px solid #dfe9d5; border-radius:15px; background:#f1f8e9; margin-bottom:14px; }
+    .demo-strip > div { min-width:0; flex:1; }
+    .demo-strip b { display:block; color:var(--green); font-size:11px; }
+    .demo-strip span { display:block; color:#6d806d; font-size:10px; margin-top:3px; }
+    .demo-strip button { background:var(--green); color:#fff; border-radius:10px; padding:9px 10px; font-size:10px; font-weight:800; white-space:nowrap; }
+    .guest-card { display:grid; gap:10px; }
+    .guest-choice { display:flex; align-items:center; gap:11px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:15px; padding:13px; }
+    .guest-choice:hover { border-color:var(--green-2); }
+    .guest-choice .driver-avatar { width:37px; height:37px; }
+    .guest-choice b { display:block; font-size:12px; }
+    .guest-choice span { display:block; color:var(--muted); font-size:10px; margin-top:3px; }
+    .demo-help { background:#eef6e5; border-radius:13px; color:#52735a; padding:11px 12px; font-size:11px; line-height:1.45; margin-top:14px; }
+    .driver-dashboard { display:grid; gap:13px; }
+    .driver-profile { display:flex; align-items:center; gap:11px; padding:13px; border-radius:15px; background:#fff; border:1px solid var(--line); }
+    .driver-profile > div:last-child { flex:1; }
+    .driver-profile b { display:block; font-size:13px; }
+    .driver-profile span { display:block; color:var(--muted); font-size:10px; margin-top:3px; }
+    .availability { display:flex; justify-content:space-between; align-items:center; padding:11px 12px; border-radius:13px; background:#eaf5dc; color:var(--green-2); font-size:11px; font-weight:800; }
+    .availability button { background:#fff; color:var(--green); border-radius:9px; padding:8px 10px; font-size:10px; font-weight:800; }
+    .request-card { padding:14px; border-radius:16px; border:1px solid #f0ddc2; background:#fff8ee; }
+    .request-card small { color:#936338; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+    .request-card h3 { margin:7px 0 4px; font-size:17px; letter-spacing:-.04em; }
+    .request-card p { margin:0; color:var(--muted); font-size:11px; line-height:1.45; }
+    .request-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:13px; }
+    .request-actions button { border-radius:11px; padding:11px; font-size:11px; font-weight:800; }
+    .request-actions .accept { background:var(--green); color:#fff; }
+    .request-actions .decline { background:#f0e4de; color:#93564c; }
+    .toast { position:fixed; left:50%; top:22px; transform:translateX(-50%) translateY(-20px); background:var(--green); color:#fff; border-radius:99px; padding:12px 16px; font-size:12px; font-weight:700; opacity:0; pointer-events:none; z-index:20; transition: all .25s; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      .map-side { min-height: 460px; }
+      .app-side { min-height: 620px; }
+    }
+    @media (max-width: 560px) {
+      .map-side { min-height: 380px; }
+      .map-copy { left: 28px; top: 29%; }
+      .map-copy h1 { font-size: 47px; }
+      .topbar { padding: 22px; }
+      .map-footer { left:22px; right:22px; bottom:20px; }
+      .app-side { padding:20px 16px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="map-side" aria-label="Ride map preview">
+      <div class="topbar">
+        <div class="brand"><span class="brand-mark">↗</span>rova</div>
+        <div class="safe-pill"><span class="safe-dot"></span> Accra, Ghana</div>
+      </div>
+      <div class="map-copy">
+        <div class="eyebrow">Move with confidence</div>
+        <h1>Your next ride is closer than you think.</h1>
+        <p>Simple pickups, clear driver details, and a direct line to the person behind the wheel.</p>
+      </div>
+      <div class="park p1"></div><div class="park p2"></div>
+      <div class="road r1"></div><div class="road r2"></div><div class="road r3"></div><div class="road r4"></div><div class="road r5"></div>
+      <div class="route"></div><div class="map-pin pin-one"></div><div class="map-pin pin-two"></div>
+      <div class="map-footer"><span>◉ Live location on</span><span>Accra · Updated just now</span></div>
+    </section>
+
+    <section class="app-side">
+      <header class="app-header">
+        <div class="greeting"><small>Sunday, September 13</small><strong>Good morning, Ama</strong></div>
+        <button class="avatar" id="openAccount" aria-label="Open account">A</button>
+      </header>
+      <div class="demo-strip"><div><b>Simulation mode</b><span>Two guest accounts · rider + driver</span></div><button id="openSimulation">Open guests</button></div>
+      <div class="ride-card">
+        <h2>Where are you going?</h2>
+        <p>Request a ride for yourself or send one to someone you care about.</p>
+        <button class="primary" id="openRide">Request a ride <span>→</span></button>
+      </div>
+
+      <div class="section-head"><h3>Saved places</h3><button class="link-button" id="addPlace">+ Add place</button></div>
+      <div class="saved-list">
+        <div class="saved"><div class="saved-icon">⌂</div><div><b>Home</b><span>14 Palm Street, Osu, Accra</span></div><span class="arrow">›</span></div>
+        <div class="saved"><div class="saved-icon">▦</div><div><b>Work</b><span>Independence Avenue, Accra</span></div><span class="arrow">›</span></div>
+      </div>
+
+      <div class="section-head"><h3>Recent rides</h3><button class="link-button">View all</button></div>
+      <div class="panel">
+        <div class="activity"><div class="activity-icon">↘</div><div class="activity-main"><b>Kotoka International Airport</b><span>Yesterday · 08:42 AM</span></div><div class="activity-price">₵ 86.00</div></div>
+        <div class="activity"><div class="activity-icon">↗</div><div class="activity-main"><b>Accra Mall</b><span>Sep 10 · 06:18 PM</span></div><div class="activity-price">₵ 42.50</div></div>
+      </div>
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-item active"><span class="nav-icon">⌂</span>Home</button>
+        <button class="nav-item"><span class="nav-icon">◷</span>Activity</button>
+        <button class="nav-item" id="messages"><span class="nav-icon">◌</span>Messages</button>
+        <button class="nav-item"><span class="nav-icon">◯</span>Account</button>
+      </nav>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="rideModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rideTitle">
+      <div class="modal-top"><div><h2 id="rideTitle">Request a ride</h2><p>Tell us who is riding and where they need to go.</p></div><button class="close" id="closeRide" aria-label="Close">×</button></div>
+      <div class="choice-row">
+        <button class="choice selected" data-choice="me"><b>For me</b><span>I’m taking this ride</span></button>
+        <button class="choice" data-choice="someone"><b>For someone else</b><span>Send a ride to family or friends</span></button>
+      </div>
+      <label class="field"><span>⌖</span><input placeholder="Pickup location" value="Current location" /></label>
+      <label class="field"><span>⌁</span><input placeholder="Where to?" /></label>
+      <label class="field" id="riderField" style="display:none"><span>☻</span><input placeholder="Rider’s Ghana phone number" /></label>
+      <button class="primary" id="findRide">Find a driver <span>→</span></button>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="accountModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+      <div class="modal-top"><div><h2 id="accountTitle">Welcome to Rova</h2><p>Use your phone number to create an account or sign in securely.</p></div><button class="close" id="closeAccount" aria-label="Close">×</button></div>
+      <label class="field"><span>+233</span><input inputmode="tel" placeholder="24 000 0000" /></label>
+      <button class="primary" id="continuePhone">Continue with phone <span>→</span></button>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="simulationModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="simulationTitle">
+      <div class="modal-top"><div><h2 id="simulationTitle">Guest simulation</h2><p>Choose a demo account. Use Rider Guest in one copy and Driver Guest in another to test the live request flow.</p></div><button class="close" id="closeSimulation" aria-label="Close">×</button></div>
+      <div class="guest-card">
+        <button class="guest-choice" id="useRiderGuest"><div class="driver-avatar">AG</div><div><b>Rider Guest · Ama</b><span>+233 24 000 0000 · requests rides</span></div></button>
+        <button class="guest-choice" id="useDriverGuest"><div class="driver-avatar">KM</div><div><b>Driver Guest · Kwame</b><span>AS 2194-24 · Toyota Corolla · receives requests</span></div></button>
+      </div>
+      <div class="demo-help">For a two-window simulation, open this prototype twice on the same browser origin. Select Rider Guest in one and Driver Guest in the other. Requests, acceptances, and declines sync through the browser.</div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="driverModalSim">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="driverSimTitle">
+      <div class="modal-top"><div><h2 id="driverSimTitle">Driver Guest</h2><p>Live driver-side simulation for Kwame Mensah.</p></div><button class="close" id="closeDriverSim" aria-label="Close">×</button></div>
+      <div class="driver-dashboard">
+        <div class="driver-profile"><div class="driver-avatar">KM</div><div><b>Kwame Mensah</b><span>AS 2194-24 · Toyota Corolla · Accra</span></div></div>
+        <div class="availability"><span id="driverAvailabilityText">● Available for rides</span><button id="toggleDriverAvailability">Go offline</button></div>
+        <div class="request-card" id="incomingRequest" style="display:none">
+          <small>New ride request</small><h3 id="incomingRider">Ama Guest</h3><p id="incomingTrip">Current location → Accra Mall · Rider is waiting for your response.</p>
+          <div class="request-actions"><button class="accept" id="acceptRequest">Accept ride</button><button class="decline" id="declineRequest">Decline</button></div>
+        </div>
+        <div class="request-card" id="activeDriverTrip" style="display:none">
+          <small>Trip in progress</small><h3 id="activeTripRider">Ama Guest</h3><p>Rider has been notified. Complete the demo trip to open both final bills.</p>
+          <button class="primary" id="completeDemoTrip" style="width:100%; margin-top:13px">Complete simulated trip</button>
+        </div>
+        <div class="demo-help" id="driverSimEmpty">No incoming request yet. Choose Kwame Mensah in the rider simulation to send one here.</div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="driverModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="driverTitle">
+      <div class="modal-top"><div><h2 id="driverTitle">Drivers near you</h2><p>We’re prioritising drivers who are close by or finishing a ride nearby.</p></div><button class="close" id="closeDrivers" aria-label="Close">×</button></div>
+      <label class="field"><span>⌕</span><input id="driverSearch" placeholder="Search by name or plate for a direct request" /></label>
+      <div class="driver-list" id="driverList">
+        <div class="driver-card" data-search="kwame mensah as 2194-24 toyota corolla">
+          <div class="driver-avatar">KM</div><div class="driver-details"><b>Kwame Mensah</b><span>AS 2194-24 · Toyota Corolla · 0.8 km away</span><span class="driver-status">Available now · 3 min ETA</span></div><button class="request-small">Request</button>
+        </div>
+        <div class="driver-card" data-search="adwoa asante gt 4532-23 hyundai elantra">
+          <div class="driver-avatar">AA</div><div class="driver-details"><b>Adwoa Asante</b><span>GT 4532-23 · Hyundai Elantra · Near Osu</span><span class="driver-status">Finishing nearby · 5 min ETA</span></div><button class="request-small">Request</button>
+        </div>
+        <div class="driver-card" data-search="nana boateng gw 8710-22 kia rio">
+          <div class="driver-avatar">NB</div><div class="driver-details"><b>Nana Boateng</b><span>GW 8710-22 · Kia Rio · 1.7 km away</span><span class="driver-status">Available now · 6 min ETA</span></div><button class="request-small">Request</button>
+        </div>
+      </div>
+      <div class="fee-notice" id="nextRideFee" style="display:none"><span>₵</span><div><b>Previous cancellation fee: ₵5.00</b><br>₵3.00 goes to the affected driver and ₵2.00 goes to Rova. The full balance will be added to your next completed ride.</div></div>
+      <div class="matching-note"><span>✦</span><div><b>How matching works:</b> Nearby drivers appear first. Search a full name or plate to send a direct request, even when that driver is farther away; their ETA will always be shown.</div></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="tripModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tripTitle">
+      <div class="modal-top"><div><h2 id="tripTitle">Your ride is moving</h2><p id="tripSubtitle">Your driver has been notified and is heading your way.</p></div><button class="close" id="closeTrip" aria-label="Close">×</button></div>
+      <div class="trip-map" aria-label="Live driver tracking preview">
+        <div class="trip-map-label driver-label">Driver location</div><div class="trip-map-label pickup-label">Your pickup</div>
+        <div class="trip-pin driver"></div><div class="trip-pin pickup"></div>
+      </div>
+      <div class="status-pill"><span class="status-pulse"></span><span id="tripStatus">Driver is on the way</span></div>
+      <div class="cancel-window" id="cancelWindow"><span>✓</span><div><b id="cancelWindowTitle">Free cancellation for 3:00</b><br><span id="cancelWindowText">No fee during the first 3 minutes after driver matching.</span></div></div>
+      <div class="fee-notice" id="tripFeeNotice" style="display:none"><span>₵</span><div><b>₵5.00 pending from a previous cancellation</b><br>₵3.00 goes to the affected driver and ₵2.00 goes to Rova when this balance is settled.</div></div>
+      <div class="waiting-panel" id="waitingPanel"><div><b>Pickup waiting time</b><span id="waitingText">Starts when your driver arrives · 5:00 free</span></div><button id="driverArrived">Driver arrived</button></div>
+      <div class="trip-summary">
+        <div class="driver-avatar" id="tripAvatar">KM</div>
+        <div><b id="tripDriver">Kwame Mensah</b><span id="tripVehicle">AS 2194-24 · Toyota Corolla</span></div>
+        <div class="trip-eta"><b id="tripEta">3 min</b><span>estimated arrival</span></div>
+      </div>
+      <div class="trip-actions"><button class="secondary" id="chatDriver">◌ Chat driver</button><button class="secondary" id="callDriver">⌕ Call driver</button></div>
+      <button class="secondary" id="viewBill" style="width:100%; margin-top:9px">View completed-ride bill</button>
+      <button class="danger-link" id="cancelRide">Cancel ride</button>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="cancelModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cancelTitle">
+      <div class="modal-top"><div><h2 id="cancelTitle">Cancel this ride?</h2><p>Your driver may already be travelling to your pickup point.</p></div><button class="close" id="closeCancel" aria-label="Close">×</button></div>
+      <div class="cancel-copy" id="cancelCopy"><b id="cancelCopyTitle">Free cancellation is still available</b><br><span id="cancelCopyText">You can cancel within the first 3 minutes after matching without a fee.</span></div>
+      <div class="cancel-actions"><button class="secondary" id="keepRide">Keep ride</button><button class="danger" id="confirmCancel">Cancel ride</button></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="billModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="billTitle">
+      <div class="modal-top"><div><h2 id="billTitle">Completed ride bill</h2><p id="billSubtitle">The previous cancellation balance is shown separately for clarity.</p></div><button class="close" id="closeBill" aria-label="Close">×</button></div>
+      <div class="bill-tabs"><button class="bill-tab active" id="riderBillTab">Rider bill</button><button class="bill-tab" id="driverBillTab">Driver bill</button></div>
+      <div id="riderBillView">
+        <div class="bill-caption">What the rider is charged for this completed trip.</div>
+        <div class="bill-lines">
+          <div class="bill-line"><span>Ride fare</span><b>₵42.50</b></div>
+          <div class="bill-line" id="waitingFeeLine" style="display:none"><span id="waitingFeeLabel">Pickup waiting time</span><b id="waitingFeeAmount">₵0.00</b></div>
+          <div class="bill-line fee" id="billFeeLine" style="display:none"><span id="billFeeLabel">Previous cancellation fee</span><b id="billFeeAmount">₵5.00</b></div>
+        </div>
+        <div class="bill-total"><span>Rider total</span><b id="billTotal">₵42.50</b></div>
+      </div>
+      <div id="driverBillView" style="display:none">
+        <div class="bill-caption">What the driver earned from this completed trip. Cancellation compensation is shown only when this driver received that cancellation.</div>
+        <div class="bill-lines">
+          <div class="bill-line"><span>Base trip earnings</span><b>₵42.50</b></div>
+          <div class="bill-line" id="driverWaitingLine" style="display:none"><span>Waiting time earnings · no platform fee</span><b id="driverWaitingAmount">₵0.00</b></div>
+          <div class="bill-line"><span>Gross trip earnings</span><b id="driverGross">₵42.50</b></div>
+          <div class="bill-line platform"><span>Platform fee (30% of ride fare)</span><b id="driverPlatformFee">−₵12.75</b></div>
+          <div class="bill-line fee" id="driverCancellationGrossLine" style="display:none"><span>Cancellation fee collected</span><b>₵5.00</b></div>
+          <div class="bill-line platform" id="driverCancellationPlatformLine" style="display:none"><span>Platform cancellation share</span><b>−₵2.00</b></div>
+          <div class="bill-line fee" id="driverFeeLine" style="display:none"><span>Driver cancellation compensation</span><b id="driverFeeAmount">₵3.00</b></div>
+        </div>
+        <div class="bill-total"><span id="driverTotalLabel">Driver net payout</span><b id="driverBillTotal">₵29.75</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const modal = document.getElementById('rideModal');
+    const accountModal = document.getElementById('accountModal');
+    const simulationModal = document.getElementById('simulationModal');
+    const driverModalSim = document.getElementById('driverModalSim');
+    const driverModal = document.getElementById('driverModal');
+    const tripModal = document.getElementById('tripModal');
+    const cancelModal = document.getElementById('cancelModal');
+    const billModal = document.getElementById('billModal');
+    const toast = document.getElementById('toast');
+    const riderField = document.getElementById('riderField');
+    const CANCELLATION_FEE = 5;
+    const PLATFORM_CANCELLATION_SHARE = 2;
+    const DRIVER_CANCELLATION_COMPENSATION = CANCELLATION_FEE - PLATFORM_CANCELLATION_SHARE;
+    const WAITING_GRACE_MINUTES = 5;
+    const WAITING_FEE_PER_MINUTE = 0.10;
+    const RIDE_FARE = 42.50;
+    const PLATFORM_FEE_RATE = 0.30;
+    let pendingCancellationFee = false;
+    let freeCancelSeconds = 180;
+    let cancelTimer;
+    let waitingTimer;
+    let waitingStarted = false;
+    let waitingGraceSeconds = WAITING_GRACE_MINUTES * 60;
+    let waitingChargeSeconds = 0;
+    let waitingChargeMinutes = 0;
+    let waitingCharge = 0;
+    let activeDriverName = 'Kwame Mensah';
+    let cancellationFeeDriver = '';
+    let demoRole = 'rider';
+    let driverOnline = true;
+    let incomingDemoRequest = null;
+    let demoChannel = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') demoChannel = new BroadcastChannel('rova-ride-demo');
+    } catch (error) {
+      demoChannel = null;
+    }
+    const formatCedis = (amount) => `₵${amount.toFixed(2)}`;
+    const notify = (message) => {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    };
+    const formatTime = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    const updateCancelWindow = () => {
+      const window = document.getElementById('cancelWindow');
+      const title = document.getElementById('cancelWindowTitle');
+      const text = document.getElementById('cancelWindowText');
+      if (freeCancelSeconds > 0) {
+        window.classList.remove('expired');
+        title.textContent = `Free cancellation for ${formatTime(freeCancelSeconds)}`;
+        text.textContent = 'No fee during the first 3 minutes after driver matching.';
+      } else {
+        window.classList.add('expired');
+        title.textContent = 'Free cancellation window ended';
+        text.textContent = `₵3.00 will go to ${activeDriverName} and ₵2.00 to Rova if you cancel.`;
+      }
+    };
+    const startCancelTimer = () => {
+      clearInterval(cancelTimer);
+      freeCancelSeconds = 180;
+      updateCancelWindow();
+      cancelTimer = setInterval(() => {
+        freeCancelSeconds = Math.max(0, freeCancelSeconds - 1);
+        updateCancelWindow();
+        if (freeCancelSeconds === 0) clearInterval(cancelTimer);
+      }, 1000);
+    };
+    const updateCancelPrompt = () => {
+      const title = document.getElementById('cancelCopyTitle');
+      const text = document.getElementById('cancelCopyText');
+      if (freeCancelSeconds > 0) {
+        title.textContent = 'Free cancellation is still available';
+        text.textContent = `You have ${formatTime(freeCancelSeconds)} remaining. No fee will be added.`;
+      } else {
+        title.textContent = '₵5.00 cancellation fee';
+        text.textContent = `₵3.00 will go to ${activeDriverName} and ₵2.00 to Rova. The full ₵5.00 will be added to your next completed ride.`;
+      }
+    };
+    const updateWaitingPanel = () => {
+      const panel = document.getElementById('waitingPanel');
+      const text = document.getElementById('waitingText');
+      const button = document.getElementById('driverArrived');
+      if (!waitingStarted) {
+        panel.classList.remove('active');
+        text.textContent = `Starts when your driver arrives · ${WAITING_GRACE_MINUTES}:00 free`;
+        button.style.display = 'block';
+      } else if (waitingGraceSeconds > 0) {
+        panel.classList.remove('active');
+        text.textContent = `Free waiting time remaining · ${formatTime(waitingGraceSeconds)}`;
+        button.style.display = 'none';
+      } else {
+        panel.classList.add('active');
+        text.textContent = `₵0.10 per minute · ${waitingChargeMinutes} chargeable minute${waitingChargeMinutes === 1 ? '' : 's'} · ${formatCedis(waitingCharge)}`;
+        button.style.display = 'none';
+      }
+    };
+    const resetWaitingState = () => {
+      clearInterval(waitingTimer);
+      waitingStarted = false;
+      waitingGraceSeconds = WAITING_GRACE_MINUTES * 60;
+      waitingChargeSeconds = 0;
+      waitingChargeMinutes = 0;
+      waitingCharge = 0;
+      updateWaitingPanel();
+    };
+    const startWaitingTimer = () => {
+      clearInterval(waitingTimer);
+      waitingStarted = true;
+      waitingGraceSeconds = WAITING_GRACE_MINUTES * 60;
+      waitingChargeSeconds = 0;
+      waitingChargeMinutes = 0;
+      waitingCharge = 0;
+      updateWaitingPanel();
+      waitingTimer = setInterval(() => {
+        if (waitingGraceSeconds > 0) {
+          waitingGraceSeconds -= 1;
+        } else {
+          waitingChargeSeconds += 1;
+          waitingChargeMinutes = Math.floor(waitingChargeSeconds / 60);
+          waitingCharge = waitingChargeMinutes * WAITING_FEE_PER_MINUTE;
+        }
+        updateWaitingPanel();
+      }, 1000);
+    };
+    const showIncomingDemoRequest = (request) => {
+      incomingDemoRequest = request;
+      document.getElementById('incomingRider').textContent = request.rider;
+      document.getElementById('incomingTrip').textContent = `${request.pickup} → ${request.destination} · Rider is waiting for your response.`;
+      document.getElementById('incomingRequest').style.display = 'block';
+      document.getElementById('activeDriverTrip').style.display = 'none';
+      document.getElementById('driverSimEmpty').style.display = 'none';
+      if (demoRole === 'driver') {
+        driverModalSim.classList.add('open');
+        notify('New ride request received in Driver Guest.');
+      }
+    };
+    const receiveDemoMessage = (message) => {
+      if (!message || message.channel !== 'rova-demo') return;
+      if (message.type === 'ride-requested' && message.targetDriver === 'Kwame Mensah') {
+        showIncomingDemoRequest(message);
+      }
+      if (message.type === 'ride-accepted') {
+        activeDriverName = message.driverName;
+        document.getElementById('tripStatus').textContent = 'Driver accepted · on the way';
+        document.getElementById('tripSubtitle').textContent = `${message.driverName} accepted your request and is heading to pickup.`;
+        if (demoRole === 'rider') {
+          tripModal.classList.add('open');
+          notify('Driver accepted the ride request.');
+        }
+      }
+      if (message.type === 'ride-declined' && demoRole === 'rider') {
+        document.getElementById('tripStatus').textContent = 'Request declined';
+        document.getElementById('tripSubtitle').textContent = 'The driver was unable to accept. You can choose another nearby driver.';
+        notify('Driver declined the request.');
+      }
+      if (message.type === 'ride-completed') {
+        activeDriverName = message.driverName;
+        if (demoRole === 'rider') {
+          document.getElementById('viewBill').click();
+          notify('Trip complete. Your rider bill is ready.');
+        }
+        if (demoRole === 'driver') {
+          document.getElementById('viewBill').click();
+          document.getElementById('driverBillTab').click();
+          notify('Trip complete. Your driver bill is ready.');
+        }
+      }
+    };
+    const sendDemoMessage = (message) => {
+      const event = { channel: 'rova-demo', ...message };
+      receiveDemoMessage(event);
+      if (demoChannel) {
+        demoChannel.postMessage(event);
+      } else {
+        try {
+          localStorage.setItem('rova-demo-event', JSON.stringify({ ...event, sentAt: Date.now() }));
+        } catch (error) {
+          // Local file previews may not expose localStorage.
+        }
+      }
+    };
+    if (demoChannel) demoChannel.onmessage = (event) => receiveDemoMessage(event.data);
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'rova-demo-event' && event.newValue) {
+        try { receiveDemoMessage(JSON.parse(event.newValue)); } catch (error) { /* Ignore malformed demo events. */ }
+      }
+    });
+    document.getElementById('openSimulation').onclick = () => simulationModal.classList.add('open');
+    document.getElementById('closeSimulation').onclick = () => simulationModal.classList.remove('open');
+    simulationModal.onclick = (event) => { if (event.target === simulationModal) simulationModal.classList.remove('open'); };
+    document.getElementById('useRiderGuest').onclick = () => {
+      demoRole = 'rider';
+      simulationModal.classList.remove('open');
+      notify('Rider Guest active: Ama · +233 24 000 0000');
+    };
+    document.getElementById('useDriverGuest').onclick = () => {
+      demoRole = 'driver';
+      simulationModal.classList.remove('open');
+      driverModalSim.classList.add('open');
+      notify('Driver Guest active: Kwame Mensah · AS 2194-24');
+    };
+    document.getElementById('closeDriverSim').onclick = () => driverModalSim.classList.remove('open');
+    driverModalSim.onclick = (event) => { if (event.target === driverModalSim) driverModalSim.classList.remove('open'); };
+    document.getElementById('toggleDriverAvailability').onclick = () => {
+      driverOnline = !driverOnline;
+      document.getElementById('driverAvailabilityText').textContent = driverOnline ? '● Available for rides' : '○ Offline';
+      document.getElementById('toggleDriverAvailability').textContent = driverOnline ? 'Go offline' : 'Go online';
+    };
+    document.getElementById('acceptRequest').onclick = () => {
+      if (!incomingDemoRequest || !driverOnline) return;
+      document.getElementById('incomingRequest').style.display = 'none';
+      document.getElementById('activeDriverTrip').style.display = 'block';
+      document.getElementById('activeTripRider').textContent = incomingDemoRequest.rider;
+      document.getElementById('driverSimEmpty').style.display = 'none';
+      document.getElementById('driverAvailabilityText').textContent = '● Trip in progress';
+      sendDemoMessage({ type: 'ride-accepted', driverName: 'Kwame Mensah' });
+    };
+    document.getElementById('declineRequest').onclick = () => {
+      document.getElementById('incomingRequest').style.display = 'none';
+      document.getElementById('driverSimEmpty').style.display = 'block';
+      sendDemoMessage({ type: 'ride-declined', driverName: 'Kwame Mensah' });
+    };
+    document.getElementById('completeDemoTrip').onclick = () => {
+      document.getElementById('activeDriverTrip').style.display = 'none';
+      document.getElementById('driverSimEmpty').style.display = 'block';
+      document.getElementById('driverAvailabilityText').textContent = '● Available for rides';
+      sendDemoMessage({ type: 'ride-completed', driverName: 'Kwame Mensah' });
+    };
+    document.getElementById('openRide').onclick = () => modal.classList.add('open');
+    document.getElementById('closeRide').onclick = () => modal.classList.remove('open');
+    modal.onclick = (event) => { if (event.target === modal) modal.classList.remove('open'); };
+    document.querySelectorAll('.choice').forEach((choice) => {
+      choice.onclick = () => {
+        document.querySelectorAll('.choice').forEach((item) => item.classList.remove('selected'));
+        choice.classList.add('selected');
+        riderField.style.display = choice.dataset.choice === 'someone' ? 'flex' : 'none';
+      };
+    });
+    document.getElementById('findRide').onclick = () => {
+      modal.classList.remove('open');
+      document.getElementById('nextRideFee').style.display = pendingCancellationFee ? 'flex' : 'none';
+      driverModal.classList.add('open');
+    };
+    document.getElementById('closeDrivers').onclick = () => driverModal.classList.remove('open');
+    driverModal.onclick = (event) => { if (event.target === driverModal) driverModal.classList.remove('open'); };
+    document.getElementById('driverSearch').oninput = (event) => {
+      const query = event.target.value.toLowerCase().trim();
+      document.querySelectorAll('#driverList .driver-card').forEach((card) => {
+        card.style.display = !query || card.dataset.search.includes(query) ? 'flex' : 'none';
+      });
+    };
+    document.querySelectorAll('.request-small').forEach((button) => {
+      button.onclick = () => {
+        const card = button.parentElement;
+        const driverName = card.querySelector('b').textContent;
+        const driverMeta = card.querySelectorAll('.driver-details span')[0].textContent;
+        const driverStatus = card.querySelectorAll('.driver-details span')[1].textContent;
+        const eta = driverStatus.match(/(\d+ min)/)?.[1] || '5 min';
+        activeDriverName = driverName;
+        resetWaitingState();
+        document.getElementById('tripDriver').textContent = driverName;
+        document.getElementById('tripVehicle').textContent = driverMeta.replace(/ · [\d.]+ km away| · Near Osu/, '');
+        document.getElementById('tripEta').textContent = eta;
+        document.getElementById('tripAvatar').textContent = driverName.split(' ').map((part) => part[0]).join('').slice(0, 2);
+        document.getElementById('tripFeeNotice').style.display = pendingCancellationFee ? 'flex' : 'none';
+        driverModal.classList.remove('open');
+        tripModal.classList.add('open');
+        document.getElementById('tripStatus').textContent = driverName === 'Kwame Mensah' ? 'Waiting for driver confirmation' : 'Driver is on the way';
+        document.getElementById('tripSubtitle').textContent = driverName === 'Kwame Mensah' ? 'Your request was sent to the Driver Guest simulation.' : `${driverName} is heading to your pickup.`;
+        startCancelTimer();
+        if (driverName === 'Kwame Mensah') {
+          sendDemoMessage({
+            type: 'ride-requested',
+            targetDriver: 'Kwame Mensah',
+            rider: 'Ama Guest',
+            pickup: 'Current location',
+            destination: 'Accra Mall'
+          });
+        }
+      };
+    });
+    document.getElementById('closeTrip').onclick = () => tripModal.classList.remove('open');
+    tripModal.onclick = (event) => { if (event.target === tripModal) tripModal.classList.remove('open'); };
+    document.getElementById('chatDriver').onclick = () => notify('Driver chat is ready for the messaging backend.');
+    document.getElementById('callDriver').onclick = () => notify('Driver calling is ready for the voice backend.');
+    document.getElementById('cancelRide').onclick = () => {
+      updateCancelPrompt();
+      cancelModal.classList.add('open');
+    };
+    document.getElementById('closeCancel').onclick = () => cancelModal.classList.remove('open');
+    document.getElementById('keepRide').onclick = () => cancelModal.classList.remove('open');
+    cancelModal.onclick = (event) => { if (event.target === cancelModal) cancelModal.classList.remove('open'); };
+    document.getElementById('confirmCancel').onclick = () => {
+      const chargeable = freeCancelSeconds === 0;
+      pendingCancellationFee = chargeable;
+      cancellationFeeDriver = chargeable ? activeDriverName : '';
+      cancelModal.classList.remove('open');
+      tripModal.classList.remove('open');
+      clearInterval(cancelTimer);
+      notify(chargeable ? 'Ride cancelled. ₵5.00 added to your next ride: ₵3.00 to the driver and ₵2.00 to Rova.' : 'Ride cancelled within the free 3-minute window. No fee was added.');
+    };
+    document.getElementById('driverArrived').onclick = () => {
+      startWaitingTimer();
+      notify('Waiting-time grace period started: 5 minutes free.');
+    };
+    document.getElementById('viewBill').onclick = () => {
+      const riderCancellationFee = pendingCancellationFee ? CANCELLATION_FEE : 0;
+      const riderTotal = RIDE_FARE + riderCancellationFee + waitingCharge;
+      document.getElementById('billFeeLine').style.display = pendingCancellationFee ? 'flex' : 'none';
+      document.getElementById('billFeeLabel').textContent = pendingCancellationFee ? `Previous cancellation fee · paid to ${cancellationFeeDriver}` : 'Previous cancellation fee';
+      document.getElementById('billFeeAmount').textContent = formatCedis(CANCELLATION_FEE);
+      document.getElementById('waitingFeeLine').style.display = waitingCharge > 0 ? 'flex' : 'none';
+      document.getElementById('waitingFeeLabel').textContent = `Pickup waiting time · ${Math.ceil(waitingChargeMinutes)} min`;
+      document.getElementById('waitingFeeAmount').textContent = formatCedis(waitingCharge);
+      document.getElementById('billTotal').textContent = formatCedis(riderTotal);
+      const driverReceivedFee = cancellationFeeDriver === activeDriverName;
+      const driverGross = RIDE_FARE + waitingCharge;
+      const platformFee = RIDE_FARE * PLATFORM_FEE_RATE;
+      const driverNet = driverGross - platformFee + (driverReceivedFee ? DRIVER_CANCELLATION_COMPENSATION : 0);
+      document.getElementById('driverWaitingLine').style.display = waitingCharge > 0 ? 'flex' : 'none';
+      document.getElementById('driverWaitingAmount').textContent = formatCedis(waitingCharge);
+      document.getElementById('driverGross').textContent = formatCedis(driverGross);
+      document.getElementById('driverPlatformFee').textContent = `−${formatCedis(platformFee)}`;
+      document.getElementById('driverCancellationGrossLine').style.display = driverReceivedFee ? 'flex' : 'none';
+      document.getElementById('driverCancellationPlatformLine').style.display = driverReceivedFee ? 'flex' : 'none';
+      document.getElementById('driverFeeLine').style.display = driverReceivedFee ? 'flex' : 'none';
+      document.getElementById('driverFeeAmount').textContent = formatCedis(DRIVER_CANCELLATION_COMPENSATION);
+      document.getElementById('driverBillTotal').textContent = formatCedis(driverNet);
+      document.getElementById('driverTotalLabel').textContent = `${activeDriverName}'s net payout`;
+      billModal.classList.add('open');
+    };
+    document.getElementById('riderBillTab').onclick = () => {
+      document.getElementById('riderBillTab').classList.add('active');
+      document.getElementById('driverBillTab').classList.remove('active');
+      document.getElementById('riderBillView').style.display = 'block';
+      document.getElementById('driverBillView').style.display = 'none';
+    };
+    document.getElementById('driverBillTab').onclick = () => {
+      document.getElementById('driverBillTab').classList.add('active');
+      document.getElementById('riderBillTab').classList.remove('active');
+      document.getElementById('driverBillView').style.display = 'block';
+      document.getElementById('riderBillView').style.display = 'none';
+    };
+    document.getElementById('closeBill').onclick = () => billModal.classList.remove('open');
+    billModal.onclick = (event) => { if (event.target === billModal) billModal.classList.remove('open'); };
+    document.getElementById('openAccount').onclick = () => accountModal.classList.add('open');
+    document.getElementById('closeAccount').onclick = () => accountModal.classList.remove('open');
+    accountModal.onclick = (event) => { if (event.target === accountModal) accountModal.classList.remove('open'); };
+    document.getElementById('continuePhone').onclick = () => {
+      accountModal.classList.remove('open');
+      notify('OTP verification is ready for the authentication backend.');
+    };
+    document.getElementById('addPlace').onclick = () => notify('Saved-place management will connect to your account.');
+    document.getElementById('messages').onclick = () => notify('Your driver conversations will appear here.');
+  </script>
+</body>
+</html>
