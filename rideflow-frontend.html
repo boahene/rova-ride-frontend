@@ -565,7 +565,6 @@
         }
         if (demoRole === 'driver') {
           document.getElementById('viewBill').click();
-          document.getElementById('driverBillTab').click();
           notify('Trip complete. Your driver bill is ready.');
         }
       }
@@ -707,6 +706,17 @@
       startWaitingTimer();
       notify('Waiting-time grace period started: 5 minutes free.');
     };
+    const configureBillForRole = () => {
+      const riderView = demoRole === 'rider';
+      const riderTab = document.getElementById('riderBillTab');
+      const driverTab = document.getElementById('driverBillTab');
+      riderTab.style.display = riderView ? '' : 'none';
+      driverTab.style.display = riderView ? 'none' : '';
+      document.getElementById('riderBillView').style.display = riderView ? 'block' : 'none';
+      document.getElementById('driverBillView').style.display = riderView ? 'none' : 'block';
+      riderTab.classList.toggle('active', riderView);
+      driverTab.classList.toggle('active', !riderView);
+    };
     document.getElementById('viewBill').onclick = () => {
       const riderCancellationFee = pendingCancellationFee ? CANCELLATION_FEE : 0;
       const riderTotal = RIDE_FARE + riderCancellationFee + waitingCharge;
@@ -731,6 +741,7 @@
       document.getElementById('driverFeeAmount').textContent = formatCedis(DRIVER_CANCELLATION_COMPENSATION);
       document.getElementById('driverBillTotal').textContent = formatCedis(driverNet);
       document.getElementById('driverTotalLabel').textContent = `${activeDriverName}'s net payout`;
+      configureBillForRole();
       billModal.classList.add('open');
     };
     document.getElementById('riderBillTab').onclick = () => {
