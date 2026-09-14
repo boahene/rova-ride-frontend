@@ -22,6 +22,7 @@ The current browser demo uses `BroadcastChannel` with a `localStorage` fallback.
 - Three-minute free cancellation window after driver matching.
 - ₵5 chargeable cancellation fee: ₵3 to the affected driver and ₵2 to Rova.
 - Five free pickup-waiting minutes, then ₵0.10 per chargeable minute.
+- Pickup arrival is controlled by the driver: manual arrival or automatic arrival at the exact pickup location.
 - A 30% Rova platform fee on the ride fare only; waiting-time charges go fully to the driver.
 - Role-restricted billing: riders see only their complete charge breakdown, while drivers see only their earnings breakdown.
 

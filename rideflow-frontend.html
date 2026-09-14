@@ -164,9 +164,19 @@
     .waiting-panel > div { min-width:0; flex:1; }
     .waiting-panel b { display:block; font-size:11px; }
     .waiting-panel span { display:block; color:var(--muted); font-size:10px; margin-top:3px; }
-    .waiting-panel button { background:#e8eee8; color:var(--green); border-radius:10px; padding:9px 10px; font-size:10px; font-weight:800; white-space:nowrap; }
     .waiting-panel.active { background:#fff8ee; border-color:#f0ddc2; }
     .waiting-panel.active span { color:#936338; }
+    .arrival-controls { padding:13px; border-radius:16px; border:1px solid var(--line); background:#fff; }
+    .arrival-heading { display:flex; align-items:flex-start; gap:10px; }
+    .arrival-heading > div { min-width:0; flex:1; }
+    .arrival-heading small { display:block; color:#936338; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+    .arrival-heading b { display:block; margin-top:5px; font-size:12px; }
+    .arrival-dot { width:9px; height:9px; margin-top:3px; border-radius:50%; background:#f0a35e; box-shadow:0 0 0 4px rgba(240,163,94,.14); flex:0 0 auto; }
+    .arrival-dot.arrived { background:#52ad6b; box-shadow:0 0 0 4px rgba(82,173,107,.14); }
+    .arrival-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+    .arrival-actions button { padding:10px 8px; font-size:10px; }
+    .arrival-actions button:disabled { cursor:default; opacity:.55; }
+    .arrival-note { color:var(--muted); font-size:10px; line-height:1.4; margin:10px 0 0; }
     .cancel-copy { background:#fff4e7; color:#754a22; padding:12px; border-radius:13px; font-size:12px; line-height:1.5; margin:4px 0 16px; }
     .cancel-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
     .cancel-actions .danger { background:#b85f50; color:#fff; border-radius:12px; padding:12px; font-size:12px; font-weight:800; }
@@ -317,7 +327,12 @@
           <div class="request-actions"><button class="accept" id="acceptRequest">Accept ride</button><button class="decline" id="declineRequest">Decline</button></div>
         </div>
         <div class="request-card" id="activeDriverTrip" style="display:none">
-          <small>Trip in progress</small><h3 id="activeTripRider">Ama Guest</h3><p>Rider has been notified. Complete the demo trip to open both final bills.</p>
+          <small>Trip in progress</small><h3 id="activeTripRider">Ama Guest</h3><p>Choose how to record pickup arrival, then complete the demo trip to open the driver bill.</p>
+          <div class="arrival-controls" id="driverArrivalControls">
+            <div class="arrival-heading"><div><small>Pickup arrival</small><b id="driverArrivalStatus">Driver is heading to pickup</b></div><span class="arrival-dot" id="driverArrivalDot"></span></div>
+            <div class="arrival-actions"><button class="secondary" id="markDriverArrived">Mark arrived</button><button class="secondary" id="autoArriveAtPickup">Auto-arrive at pickup</button></div>
+            <p class="arrival-note" id="driverArrivalNote">Choose manual arrival, or let Rova mark arrival when the driver reaches the exact pickup location.</p>
+          </div>
           <button class="primary" id="completeDemoTrip" style="width:100%; margin-top:13px">Complete simulated trip</button>
         </div>
         <div class="demo-help" id="driverSimEmpty">No incoming request yet. Choose Kwame Mensah in the rider simulation to send one here.</div>
@@ -353,7 +368,7 @@
       <div class="status-pill"><span class="status-pulse"></span><span id="tripStatus">Driver is on the way</span></div>
       <div class="cancel-window" id="cancelWindow"><span>✓</span><div><b id="cancelWindowTitle">Free cancellation for 3:00</b><br><span id="cancelWindowText">No fee during the first 3 minutes after driver matching.</span></div></div>
       <div class="fee-notice" id="tripFeeNotice" style="display:none"><span>₵</span><div><b>₵5.00 pending from a previous cancellation</b><br>₵3.00 goes to the affected driver and ₵2.00 goes to Rova when this balance is settled.</div></div>
-      <div class="waiting-panel" id="waitingPanel"><div><b>Pickup waiting time</b><span id="waitingText">Starts when your driver arrives · 5:00 free</span></div><button id="driverArrived">Driver arrived</button></div>
+       <div class="waiting-panel" id="waitingPanel"><div><b>Pickup waiting time</b><span id="waitingText">Starts when your driver arrives · 5:00 free</span></div></div>
       <div class="trip-summary">
         <div class="driver-avatar" id="tripAvatar">KM</div>
         <div><b id="tripDriver">Kwame Mensah</b><span id="tripVehicle">AS 2194-24 · Toyota Corolla</span></div>
@@ -427,6 +442,8 @@
     let waitingChargeSeconds = 0;
     let waitingChargeMinutes = 0;
     let waitingCharge = 0;
+    let driverArrivalTimer;
+    let driverHasArrived = false;
     let activeDriverName = 'Kwame Mensah';
     let cancellationFeeDriver = '';
     let demoRole = 'rider';
@@ -483,19 +500,15 @@
     const updateWaitingPanel = () => {
       const panel = document.getElementById('waitingPanel');
       const text = document.getElementById('waitingText');
-      const button = document.getElementById('driverArrived');
       if (!waitingStarted) {
         panel.classList.remove('active');
         text.textContent = `Starts when your driver arrives · ${WAITING_GRACE_MINUTES}:00 free`;
-        button.style.display = 'block';
       } else if (waitingGraceSeconds > 0) {
         panel.classList.remove('active');
         text.textContent = `Free waiting time remaining · ${formatTime(waitingGraceSeconds)}`;
-        button.style.display = 'none';
       } else {
         panel.classList.add('active');
         text.textContent = `₵0.10 per minute · ${waitingChargeMinutes} chargeable minute${waitingChargeMinutes === 1 ? '' : 's'} · ${formatCedis(waitingCharge)}`;
-        button.style.display = 'none';
       }
     };
     const resetWaitingState = () => {
@@ -526,6 +539,37 @@
         updateWaitingPanel();
       }, 1000);
     };
+    const updateDriverArrivalControls = () => {
+      const status = document.getElementById('driverArrivalStatus');
+      const note = document.getElementById('driverArrivalNote');
+      const dot = document.getElementById('driverArrivalDot');
+      const manualButton = document.getElementById('markDriverArrived');
+      const autoButton = document.getElementById('autoArriveAtPickup');
+      if (driverHasArrived) {
+        status.textContent = 'Driver has arrived at pickup';
+        note.textContent = 'Pickup waiting time is now running for the rider.';
+        dot.classList.add('arrived');
+        manualButton.disabled = true;
+        autoButton.disabled = true;
+        return;
+      }
+      status.textContent = 'Driver is heading to pickup';
+      dot.classList.remove('arrived');
+      manualButton.disabled = false;
+      autoButton.disabled = false;
+    };
+    const resetDriverArrivalState = () => {
+      clearTimeout(driverArrivalTimer);
+      driverHasArrived = false;
+      updateDriverArrivalControls();
+    };
+    const markDriverArrived = (mode) => {
+      if (driverHasArrived) return;
+      clearTimeout(driverArrivalTimer);
+      driverHasArrived = true;
+      updateDriverArrivalControls();
+      sendDemoMessage({ type: 'driver-arrived', driverName: 'Kwame Mensah', mode });
+    };
     const showIncomingDemoRequest = (request) => {
       incomingDemoRequest = request;
       document.getElementById('incomingRider').textContent = request.rider;
@@ -550,6 +594,14 @@
         if (demoRole === 'rider') {
           tripModal.classList.add('open');
           notify('Driver accepted the ride request.');
+        }
+      }
+      if (message.type === 'driver-arrived') {
+        if (demoRole === 'rider') {
+          startWaitingTimer();
+          document.getElementById('tripStatus').textContent = 'Driver has arrived at pickup';
+          document.getElementById('tripSubtitle').textContent = `${message.driverName} is waiting at your pickup location.`;
+          notify(message.mode === 'automatic' ? 'Driver automatically arrived at the exact pickup location.' : 'Driver marked arrival at your pickup location.');
         }
       }
       if (message.type === 'ride-declined' && demoRole === 'rider') {
@@ -611,6 +663,7 @@
     };
     document.getElementById('acceptRequest').onclick = () => {
       if (!incomingDemoRequest || !driverOnline) return;
+      resetDriverArrivalState();
       document.getElementById('incomingRequest').style.display = 'none';
       document.getElementById('activeDriverTrip').style.display = 'block';
       document.getElementById('activeTripRider').textContent = incomingDemoRequest.rider;
@@ -619,11 +672,13 @@
       sendDemoMessage({ type: 'ride-accepted', driverName: 'Kwame Mensah' });
     };
     document.getElementById('declineRequest').onclick = () => {
+      clearTimeout(driverArrivalTimer);
       document.getElementById('incomingRequest').style.display = 'none';
       document.getElementById('driverSimEmpty').style.display = 'block';
       sendDemoMessage({ type: 'ride-declined', driverName: 'Kwame Mensah' });
     };
     document.getElementById('completeDemoTrip').onclick = () => {
+      clearTimeout(driverArrivalTimer);
       document.getElementById('activeDriverTrip').style.display = 'none';
       document.getElementById('driverSimEmpty').style.display = 'block';
       document.getElementById('driverAvailabilityText').textContent = '● Available for rides';
@@ -702,9 +757,13 @@
       clearInterval(cancelTimer);
       notify(chargeable ? 'Ride cancelled. ₵5.00 added to your next ride: ₵3.00 to the driver and ₵2.00 to Rova.' : 'Ride cancelled within the free 3-minute window. No fee was added.');
     };
-    document.getElementById('driverArrived').onclick = () => {
-      startWaitingTimer();
-      notify('Waiting-time grace period started: 5 minutes free.');
+    document.getElementById('markDriverArrived').onclick = () => markDriverArrived('manual');
+    document.getElementById('autoArriveAtPickup').onclick = () => {
+      if (driverHasArrived || driverArrivalTimer) return;
+      document.getElementById('driverArrivalStatus').textContent = 'Approaching exact pickup location';
+      document.getElementById('driverArrivalNote').textContent = 'Auto-arrival is enabled. The demo will mark arrival when the driver reaches the pickup point.';
+      driverArrivalTimer = setTimeout(() => markDriverArrived('automatic'), 4000);
+      notify('Auto-arrival enabled for the exact pickup location.');
     };
     const configureBillForRole = () => {
       const riderView = demoRole === 'rider';
